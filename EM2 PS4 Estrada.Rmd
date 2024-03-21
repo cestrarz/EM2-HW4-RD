@@ -1,0 +1,116 @@
+---
+title: 'Econometrics 2 PS4: Regression Discontinuity'
+author: "Carlos T. Estrada Arzamendi"
+date: "`r format(Sys.time(), '%B %d, %Y')`"
+output:
+  pdf_document:
+    extra_dependencies: float
+    keep_tex: true
+keep_tex: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+rm(list = ls())
+library(data.table)
+library(stargazer)
+library(lubridate)
+library(modelsummary) # to use datasummary() summary stats
+library(haven)
+library(MatchIt)
+library(dplyr)
+library(ggplot2)
+setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
+options(scipen = 5)
+```
+
+# Problem 1: (Sharp) Regression Discontinuity
+
+"Take any dataset with covariate X and outcome Y that are related in
+some way. For instance, you can use the data on birth weight and smoking
+from here: <http://www.stata.com/texts/eacsap/>, or any other relevant
+dataset. Alternatively, feel free to simulate your own data. In any
+case, please provide an explanation of your dataset. Construct a placebo
+treatment by applying a rule such that Di = 1 when Xi >= x0 for some x0.
+That is, modify the outcome variable Yi for those units with Xi >= x0 by
+adding a constant treatment effect, for example, add one standard
+deviation of the outcome plus some noise (with mean zero). Include an
+explanation of what you ended up doing"
+
+```{r data simulation}
+# Data Simulation
+library(truncnorm)
+n = 10000
+
+data = data.table(
+  gpa = rtruncnorm(n, a = 0, b = 4, mean = 3, sd = 1),
+  fam_income = runif(n, min = 20000, max = 150000)
+)
+gpa_cutoff = 2
+
+# if gpa is below cutoff, school provides tutoring that increases score
+data[, treat := ifelse(gpa < gpa_cutoff, 1, 0)]
+data[, outcome_score := gpa*300 + fam_income/1000 + treat*200 + rnorm(n, mean = 0, sd = 50)]
+
+datasummary_skim(data, out = "markdown", title = "Summary Statistics", histogram = F)
+
+
+```
+
+## 1.1) Plot the outcome by forcing variable (the standard graph showing the discontinuity)
+
+
+```{r part1}
+
+# Generate input data for output plot
+
+plot1 <- ggplot(data, aes(x = gpa, y = outcome_score, color = as.factor(treat), group = as.factor(treat))) + 
+  geom_point() +
+  #geom_smooth(aes(fill = as.factor(treat))) +
+  geom_smooth(method = "lm",color = "black", formula = y~x) + 
+  labs(x = "GPA", y = "Outcome Score") + ggtitle("Outcome by forcing variable") +
+  geom_vline(xintercept = gpa_cutoff, linewidth = 1)
+plot1
+
+```
+
+## 1.2) Plot the density of the forcing variable
+
+You can also embed plots, for example:
+
+```{r part2, out.width = "75%", fig.align = 'center'}
+plot2 <- ggplot(data, aes(gpa)) + 
+  geom_histogram(fill = "blue", color = "lightblue", binwidth = 0.05) +
+  labs(x = "GPA", y = "Outcome Score") + ggtitle("Density by forcing variable") +
+  geom_vline(xintercept = gpa_cutoff, linewidth = 1)
+plot2
+```
+
+## 1.3) Estimate the effect using a local linear regression
+
+
+```{r, results='asis', header=FALSE}
+
+reg3 = lm(outcome_score ~ treat + I(gpa-gpa_cutoff) + I(treat*(gpa-gpa_cutoff)) , data = data)
+stargazer(reg3, type = "latex", title = "Local Linear Regression", table.placement = "H",
+          header=FALSE, no.space = T, omit.stat = "f")
+
+```
+
+## 1.4) Estimate the effect using a local polynomial (of order 2 and 3) regression
+
+```{r order 2, results='asis', header=FALSE}
+
+reg41 = lm(outcome_score ~ treat + I(gpa-gpa_cutoff) + I(treat*(gpa-gpa_cutoff))+
+             I((gpa-gpa_cutoff)^2) + I(treat*(gpa-gpa_cutoff)^2), data = data)
+#stargazer(reg41, type = "latex", title = "Estimate Effect Using Local Polynomial of Order 2", table.placement = "H", header=FALSE, no.space = T)
+
+```
+
+```{r order 3, results='asis'}
+reg42 = lm(outcome_score ~ treat + I(gpa-gpa_cutoff) + I(treat*(gpa-gpa_cutoff))+
+             I((gpa-gpa_cutoff)^2) + I(treat*(gpa-gpa_cutoff)^2)+
+             I((gpa-gpa_cutoff)^3) + I(treat*(gpa-gpa_cutoff)^3), data = data)
+stargazer(reg3, reg41, reg42, type = "latex", title = "Estimate Effect Using Local Polynomial of Order 2 and 3",
+          table.placement = "H", header=FALSE, no.space = T, omit.stat = "f")
+```
