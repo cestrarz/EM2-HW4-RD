@@ -20,7 +20,7 @@ library(haven)
 library(MatchIt)
 library(dplyr)
 library(ggplot2)
-setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
+#setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
 options(scipen = 5)
 ```
 
@@ -38,6 +38,9 @@ deviation of the outcome plus some noise (with mean zero). Include an
 explanation of what you ended up doing"
 
 ```{r data simulation}
+# Change to test how RMarkdown works with VSCode
+# Change 2--- synced?
+
 # Data Simulation
 library(truncnorm)
 n = 10000
