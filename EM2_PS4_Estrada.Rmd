@@ -40,6 +40,7 @@ explanation of what you ended up doing"
 ```{r data simulation}
 # Change to test how RMarkdown works with VSCode
 # Change 2--- synced?
+# Change 3 --- branch name changed?
 
 # Data Simulation
 library(truncnorm)
